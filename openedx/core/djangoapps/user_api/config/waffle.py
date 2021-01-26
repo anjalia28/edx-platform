@@ -12,6 +12,7 @@ WAFFLE_NAMESPACE = u'user_api'
 
 # Switches
 ENABLE_MULTIPLE_USER_ENTERPRISES_FEATURE = u'enable_multiple_user_enterprises_feature'
+ENABLE_MULTIPLE_SSO_ACCOUNTS_ASSOCIATION_TO_SAML_USER = u'enable_multiple_sso_accounts_association_to_saml_user'
 
 
 def waffle():

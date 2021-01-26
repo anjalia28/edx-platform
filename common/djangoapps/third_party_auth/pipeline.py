@@ -87,9 +87,15 @@ from lms.djangoapps.verify_student.models import SSOVerification
 from lms.djangoapps.verify_student.utils import earliest_allowed_verification_date
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.user_api import accounts
+from openedx.core.djangoapps.user_api.accounts.utils import is_multiple_sso_accounts_association_to_saml_user_enabled
 from openedx.core.djangoapps.user_authn import cookies as user_authn_cookies
 from openedx.core.djangoapps.user_authn.utils import should_redirect_to_logistration_mircrofrontend
-from common.djangoapps.third_party_auth.utils import user_exists
+from common.djangoapps.third_party_auth.utils import (
+    get_user,
+    is_provider_saml,
+    is_enterprise_customer_user,
+    user_exists,
+)
 from common.djangoapps.track import segment
 from common.djangoapps.util.json_request import JsonResponse
 
@@ -738,6 +744,61 @@ def associate_by_email_if_login_api(auth_entry, backend, details, user, current_
             # email address and the legitimate user would now login to the illegitimate
             # account.
             return association_response
+
+
+@partial.partial
+def associate_by_email_if_saml(auth_entry, backend, details, user, strategy, *args, **kwargs):
+    """
+    This pipeline step associates the current social auth with the user with the
+    same email address in the database.  It defers to the social library's associate_by_email
+    implementation, which verifies that only a single database user is associated with the email.
+
+    This association is done ONLY if the user entered the pipeline belongs to SAML provider.
+    """
+    # pylint: disable=too-many-nested-blocks
+    if is_multiple_sso_accounts_association_to_saml_user_enabled():
+
+        provider_saml, current_provider = is_provider_saml(strategy.request.backend.name, kwargs)
+
+        if provider_saml:
+
+            # get the user by matching email if the pipeline user is not available.
+            current_user = user
+
+            if not current_user:
+                user_details = {'email': details.get('email')} if details else None
+                current_user = get_user(user_details or {})
+
+            if current_user:
+                try:
+                    enterprise_customer_user = is_enterprise_customer_user(current_provider.provider_id, current_user)
+                    logger.info(
+                        u'[Multiple_SSO_SAML_Accounts_Association_to_User] user belongs to an enterprise verification:'
+                        u'Email: {email}, user_id: {user_id}, Provider: {provider},'
+                        u' enterprise_customer_user: {enterprise_customer_user}'.format(
+                            email=current_user.email,
+                            user_id=current_user.id,
+                            provider=current_provider.provider_id,
+                            enterprise_customer_user=enterprise_customer_user
+                        )
+                    )
+                    if enterprise_customer_user:
+                        # this is python social auth pipeline default method to automatically associate social accounts
+                        # if the email already matches a user account.
+                        association_response = associate_by_email(backend, details, user, *args, **kwargs)
+                        if (
+                            association_response and
+                            association_response.get('user') and
+                            association_response['user'].is_active
+                        ):
+                            # Only return the user matched by email if their email has been activated.
+                            # Otherwise, an illegitimate user can create an account with another user's
+                            # email address and the legitimate user would now login to the illegitimate
+                            # account.
+                            return association_response
+                except Exception as ex:  # pylint: disable=broad-except
+                    logger.exception('[Multiple_SSO_SAML_Accounts_Association_to_User] Error in'
+                                     ' saml multiple accounts association: %s:, %s:', current_user.id, ex)
 
 
 def user_details_force_sync(auth_entry, strategy, details, user=None, *args, **kwargs):
