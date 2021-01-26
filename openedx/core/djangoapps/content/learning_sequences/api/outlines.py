@@ -264,6 +264,7 @@ def _get_user_course_outline_and_processors(course_key: CourseKey,
 
     return user_course_outline, processors
 
+
 @function_trace('replace_course_outline')
 def replace_course_outline(course_outline: CourseOutlineData):
     """

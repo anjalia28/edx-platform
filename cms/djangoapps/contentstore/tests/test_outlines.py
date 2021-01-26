@@ -98,12 +98,12 @@ class OutlineFromModuleStoreTestCase(ModuleStoreTestCase):
         assert outline_seq.title == "Normal Sequence"
         assert outline_seq.visibility == VisibilityData()
         assert outline_seq.exam == ExamData()
-        assert outline_seq.inaccessible_after_due == False
+        assert outline_seq.inaccessible_after_due is False
 
     def test_hidden_after_due_sequence(self):
         ms_seq = self._create_seq_in_new_section(hide_after_due=True)
         outline_seq, _usage_key = self._outline_seq_data(ms_seq)
-        assert outline_seq.inaccessible_after_due == True
+        assert outline_seq.inaccessible_after_due is True
 
     def test_staff_only_seq(self):
         ms_seq = self._create_seq_in_new_section(visible_to_staff_only=True)
@@ -228,7 +228,7 @@ class OutlineFromModuleStoreTaskTestCase(ModuleStoreTestCase):
             course=course_key.course,
             run=course_key.run,
             default_store=ModuleStoreEnum.Type.split,
-       )
+        )
         section = ItemFactory.create(
             parent_location=course.location,
             category="chapter",
