@@ -30,7 +30,6 @@ class CourseStructureError(Exception):
     OLX imports are much more freeform and can generate unusual structures that
     we won't know how to handle.
     """
-    pass
 
 
 def _check_sequence_fields(sequence):

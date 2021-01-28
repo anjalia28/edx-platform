@@ -180,14 +180,14 @@ class OutlineFromModuleStoreTestCase(ModuleStoreTestCase):
                 category='chapter',
                 display_name="Section",
             )
-            unit = ItemFactory.create(
+            ItemFactory.create(
                 parent_location=section.location,
                 category='vertical',
                 display_name="Unit"
             )
 
         with self.assertRaises(CourseStructureError):
-            outline = get_outline_from_modulestore(self.course_key)
+            get_outline_from_modulestore(self.course_key)
 
     def test_sequence_without_section(self):
         """
@@ -211,7 +211,7 @@ class OutlineFromModuleStoreTestCase(ModuleStoreTestCase):
             )
 
         with self.assertRaises(CourseStructureError):
-            outline = get_outline_from_modulestore(self.course_key)
+            get_outline_from_modulestore(self.course_key)
 
     def _outline_seq_data(self, modulestore_seq):
         """
