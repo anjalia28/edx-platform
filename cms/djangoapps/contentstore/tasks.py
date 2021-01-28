@@ -563,7 +563,7 @@ def import_olx(self, user_id, course_key_string, archive_path, archive_name, lan
                 LOGGER.info(u'Course %s Entrance exam imported', course.id)
 
 
-@task(name='contentstore.update_outline_from_modulestore_task')
+@task(name='cms.djangoapps.contentstore.update_outline_from_modulestore_task')
 def update_outline_from_modulestore_task(course_key_str):
     """
     Celery task that creates a learning_sequence course outline.

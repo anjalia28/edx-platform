@@ -7,10 +7,7 @@ from datetime import datetime, timezone
 from opaque_keys.edx.keys import CourseKey
 
 from openedx.core.djangoapps.content.learning_sequences.data import (
-    CourseLearningSequenceData,
     CourseOutlineData,
-    CourseSectionData,
-    CourseVisibility,
     ExamData,
     VisibilityData,
 )
@@ -19,7 +16,7 @@ from xmodule.modulestore import ModuleStoreEnum
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 
-from ..outlines import get_outline_from_modulestore
+from ..outlines import CourseStructureError, get_outline_from_modulestore
 
 
 class OutlineFromModuleStoreTestCase(ModuleStoreTestCase):
@@ -147,7 +144,7 @@ class OutlineFromModuleStoreTestCase(ModuleStoreTestCase):
                 category='chapter',
                 display_name="Section 1 - Three Sequences",
             )
-            section_2 = ItemFactory.create(
+            ItemFactory.create(
                 parent_location=self.draft_course.location,
                 category='chapter',
                 display_name="Section 2 - Empty",
@@ -167,6 +164,54 @@ class OutlineFromModuleStoreTestCase(ModuleStoreTestCase):
         assert outline.sections[0].sequences[1].title == "Seq_1_1"
         assert outline.sections[0].sequences[2].title == "Seq_1_2"
         assert len(outline.sections[1].sequences) == 0
+
+    def test_unit_in_section(self):
+        """
+        Test when the structure is Course -> Section -> Unit.
+
+        Studio disallows this, but it's possible to craft in OLX. This type of
+        structure is unsupported. We should fail with a CourseStructureError, as
+        that will emit useful debug information.
+        """
+        # Course -> Section -> Unit (No Sequence)
+        with self.store.bulk_operations(self.course_key):
+            section = ItemFactory.create(
+                parent_location=self.draft_course.location,
+                category='chapter',
+                display_name="Section",
+            )
+            unit = ItemFactory.create(
+                parent_location=section.location,
+                category='vertical',
+                display_name="Unit"
+            )
+
+        with self.assertRaises(CourseStructureError):
+            outline = get_outline_from_modulestore(self.course_key)
+
+    def test_sequence_without_section(self):
+        """
+        Test when the structure is Course -> Sequence -> Unit.
+
+        Studio disallows this, but it's possible to craft in OLX. This type of
+        structure is unsupported. We should fail with a CourseStructureError, as
+        that will emit useful debug information.
+        """
+        # Course -> Sequence (No Section)
+        with self.store.bulk_operations(self.course_key):
+            seq = ItemFactory.create(
+                parent_location=self.draft_course.location,
+                category='sequential',
+                display_name="Sequence",
+            )
+            ItemFactory.create(
+                parent_location=seq.location,
+                category='vertical',
+                display_name="Unit",
+            )
+
+        with self.assertRaises(CourseStructureError):
+            outline = get_outline_from_modulestore(self.course_key)
 
     def _outline_seq_data(self, modulestore_seq):
         """
